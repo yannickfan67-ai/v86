@@ -317,7 +317,6 @@ AsyncXHRBuffer.prototype.set = function(start, data, fn)
         fn();
         return;
     }
-
     var start_block = start / BLOCK_SIZE;
     var block_count = len / BLOCK_SIZE;
 
