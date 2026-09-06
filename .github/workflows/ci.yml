@@ -15,6 +15,26 @@ jobs:
       - name: Run eslint
         run: sudo npm install -g eslint; make eslint
 
+  maintenance:
+    name: Fork maintenance regressions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js version
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.17.0'
+
+      - name: Run maintenance tests
+        run: |
+          node tests/api/buffer-state.js
+          node tests/api/pit.js
+          node tests/api/state-map.js
+          node tests/api/state-header.js
+          node tests/api/log.js
+
   test:
     runs-on: ubuntu-latest
     name: Build and test
@@ -103,14 +123,6 @@ jobs:
 
       - name: Run api-tests
         run: make api-tests
-
-      - name: Run fork maintenance tests
-        run: |
-          node tests/api/buffer-state.js
-          node tests/api/pit.js
-          node tests/api/state-map.js
-          node tests/api/state-header.js
-          node tests/api/log.js
 
       - name: Run qemutests
         run: make qemutests
