@@ -367,6 +367,7 @@ rust-test-intensive:
 api-tests: build/v86-debug.wasm
 	./tests/api/clean-shutdown.js
 	./tests/api/state.js
+	./tests/api/state-map.js
 	./tests/api/reset.js
 	./tests/api/floppy.js
 	./tests/api/parallel.js
