@@ -1,19 +1,15 @@
 # Dockerfiles
 
-This directory contains Dockerfiles and helper scripts for building images used by v86.
-
-## alpine
-
-Build an Alpine Linux guest image for v86.
+This directory contains Dockerfile to generate images for various purposes.
 
 ## debian
 
-Build Debian guest images for v86, including 9p- and raw-disk-based setups.
+To create a Docker image to run Debian inside v86.
 
 ## exec
 
-Build a container for building and hosting v86 on a local web server (port 8000 by default).
+To create a Docker image to build and host v86 system and expose in a port (default 8000).
 
 ## test-image
 
-Build the container environment used to run the v86 test suite.
+To create a Docker image that runs v86 tests.

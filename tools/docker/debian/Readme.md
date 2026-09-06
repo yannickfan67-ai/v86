@@ -1,32 +1,31 @@
-# Debian Xfce Docker example
+Debian-xfce docker example:
 
-## Split raw disk
+For using split raw disk:
+1. run `bash build-raw-disk.sh` to build images
+2. run `./build-state-raw-disk.js` to build the state
+3. An example frontend is `examples/debian-raw-disk.html`
 
-1. Run `bash build-raw-disk.sh` to build the images.
-2. Run `./build-state-raw-disk.js` to build the state image.
-3. Use `examples/debian-raw-disk.html` as the example frontend.
+For using 9p filesystem:
 
-## 9p filesystem
+1. run `bash build-9p.sh` to build images
+2. run `./build-state-9p.js` to build the state
+3. An example frontend is `examples/debian-9p.html`
 
-1. Run `bash build-9p.sh` to build the images.
-2. Run `./build-state-9p.js` to build the state image.
-3. Use `examples/debian-9p.html` as the example frontend.
+For setting up website:
 
-## Serving the examples
+1. Either build v86 or downloading the release and place `v86.wasm` and `libv86.js` in `build` directory
+2. Launch a server at the root of this repository, e.g. `python3 -m http.server 8000`
+3. Open `http://localhost:8000/examples/debian-raw-disk.html` (raw disk) or `http://localhost:8000/examples/debian-9p.html` (9p filesystem)
 
-1. Either build v86, or download a release and place `v86.wasm` and `libv86.js` in the `build` directory.
-2. Launch a web server from the repository root, for example: `python3 -m http.server 8000`.
-3. Open `http://localhost:8000/examples/debian-raw-disk.html` for the raw-disk example or `http://localhost:8000/examples/debian-9p.html` for the 9p example.
+Network:
 
-## Networking
-
-Enable networking from the Xfce terminal with:
+Enable network by typing the following command in the xfce terminal:
 
 ```
 sudo dhclient enp0s5
 ```
 
-## Credit
+Credit:
 
-The v86 Debian configuration is based on sandbox-bio:
-https://github.com/sandbox-bio/v86/tree/master/tools/docker/debian
+v86 debian config from sandbox-bio: https://github.com/sandbox-bio/v86/tree/master/tools/docker/debian
+
