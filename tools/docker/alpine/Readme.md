@@ -1,6 +1,6 @@
-You can build a Alpine Linux 9p image using Docker:
+You can build an Alpine Linux 9p image using Docker:
 
-1. As needed, kernel flavor (`virt` is smaller than `lts`) and set of additional packages (community repo is enabled by default) can be edited in `Dockerfile`
-2. Check and run `./build.sh` with started dockerd (podman works)
-3. Run local webserver (e.g. `make run`) and open `examples/alpine.html`
-4. (optional) Run `./build-state.js` and add `initial_state: { url: "../images/alpine-state.bin.zst" }` to `alpine.html`
+1. As needed, edit the kernel flavor (`virt` is smaller than `lts`) and the set of additional packages in `Dockerfile`. The community repository is enabled by default.
+2. With Docker running (`podman` also works), review and run `./build.sh`.
+3. Run a local web server (for example, `make run`) and open `examples/alpine.html`.
+4. Optionally, run `./build-state.js` and add `initial_state: { url: "../images/alpine-state.bin.zst" }` to `alpine.html`.
