@@ -156,4 +156,13 @@ NetworkAdapter.prototype.change_proxy = function(url)
         this.socket.close();
         this.socket = undefined;
     }
+
+    // A connection attempt to the previous proxy must not throttle the new
+    // proxy for reconnect_interval. If packets are already waiting, reconnect
+    // immediately so they do not remain stranded until the guest sends again.
+    this.last_connect_attempt = Date.now() - this.reconnect_interval;
+    if(this.send_queue.length)
+    {
+        this.connect();
+    }
 };
