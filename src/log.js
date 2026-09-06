@@ -125,6 +125,15 @@ export function dbg_assert(cond, msg, level)
 {
     if(!DEBUG) return;
 
+    // A few callers historically used dbg_assert("message") to signal an
+    // unconditional failure. A non-empty string is truthy, so those assertions
+    // silently did nothing. Preserve the intended shorthand and fail with the
+    // string as the assertion message.
+    if(typeof cond === "string" && msg === undefined)
+    {
+        dbg_assert_failed(cond);
+    }
+
     if(!cond)
     {
         dbg_assert_failed(msg);
