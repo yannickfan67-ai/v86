@@ -225,14 +225,27 @@ export function restore_state(cpu, state)
                     " we=" + STATE_VERSION);
         }
 
-        if(check_length && header_block[STATE_INDEX_TOTAL_LEN] !== len)
+        const total_len = header_block[STATE_INDEX_TOTAL_LEN];
+        const info_block_len = header_block[STATE_INDEX_INFO_LEN];
+
+        if(total_len < STATE_INFO_BLOCK_START)
+        {
+            throw new StateLoadError("Invalid total length: " + total_len);
+        }
+
+        if(info_block_len <= 0 || info_block_len > total_len - STATE_INFO_BLOCK_START)
+        {
+            throw new StateLoadError("Invalid info block length: " + info_block_len);
+        }
+
+        if(check_length && total_len !== len)
         {
             throw new StateLoadError(
                     "Length doesn't match header: " +
-                    "real=" + len + " header=" + header_block[STATE_INDEX_TOTAL_LEN]);
+                    "real=" + len + " header=" + total_len);
         }
 
-        return header_block[STATE_INDEX_INFO_LEN];
+        return info_block_len;
     }
 
     function read_info_block(info_block_buffer)
@@ -309,11 +322,6 @@ export function restore_state(cpu, state)
     else
     {
         const info_block_len = read_state_header(state, true);
-
-        if(info_block_len < 0 || info_block_len + 12 >= state.length)
-        {
-            throw new StateLoadError("Invalid info block length: " + info_block_len);
-        }
 
         const info_block_buffer = state.subarray(STATE_INFO_BLOCK_START, STATE_INFO_BLOCK_START + info_block_len);
         const info_block_obj = read_info_block(info_block_buffer);
