@@ -118,10 +118,11 @@ function restore_buffers(obj, buffers)
     dbg_assert(type !== undefined);
 
     const constructor = CONSTRUCTOR_TABLE[type];
-    dbg_assert(constructor, "Unkown type: " + type);
+    dbg_assert(constructor, "Unknown type: " + type);
 
-    if(obj["args"] !== undefined) {
-        return new constructor(obj["args"]);
+    if(obj["args"] !== undefined)
+    {
+        return new constructor(restore_buffers(obj["args"], buffers));
     }
 
     const buffer = buffers[obj["buffer_id"]];
