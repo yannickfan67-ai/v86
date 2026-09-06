@@ -104,6 +104,13 @@ jobs:
       - name: Run api-tests
         run: make api-tests
 
+      - name: Run fork maintenance tests
+        run: |
+          node tests/api/buffer-state.js
+          node tests/api/pit.js
+          node tests/api/state-map.js
+          node tests/api/log.js
+
       - name: Run qemutests
         run: make qemutests
 
