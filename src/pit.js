@@ -36,6 +36,10 @@ export function PIT(cpu, bus)
 
     this.counter_reload = new Uint16Array(3);
 
+    // Host scheduling can delay timer callbacks past more than one period.
+    // Keep extra counter-0 rollovers pending so periodic IRQ0 ticks aren't lost.
+    this.pending_irq0 = 0;
+
     // TODO:
     // - counter2 can be controlled by an input
 
@@ -87,6 +91,7 @@ PIT.prototype.get_state = function()
     state[6] = this.counter_reload;
     state[7] = this.counter_start_time;
     state[8] = this.counter_start_value;
+    state[9] = this.pending_irq0;
 
     return state;
 };
@@ -102,6 +107,7 @@ PIT.prototype.set_state = function(state)
     this.counter_reload = state[6];
     this.counter_start_time = state[7];
     this.counter_start_value = state[8];
+    this.pending_irq0 = state[9] || 0;
 };
 
 PIT.prototype.timer = function(now, no_irq)
@@ -111,24 +117,46 @@ PIT.prototype.timer = function(now, no_irq)
     // counter 0 produces interrupts
     if(!no_irq)
     {
-        if(this.counter_enabled[0] && this.did_rollover(0, now))
+        if(this.pending_irq0)
         {
-            this.counter_start_value[0] = this.get_counter_value(0, now);
-            this.counter_start_time[0] = now;
-
-            dbg_log("pit interrupt. new value: " + this.counter_start_value[0], LOG_PIT);
-
-            // This isn't strictly correct, but it's necessary since browsers
-            // may sleep longer than necessary to trigger the else branch below
-            // and clear the irq
+            // Deliver at most one queued edge per main-loop iteration. Raising
+            // several edges back-to-back would collapse them in the PIC again.
             this.cpu.device_lower_irq(0);
-
             this.cpu.device_raise_irq(0);
-            var mode = this.counter_mode[0];
+            this.pending_irq0--;
+        }
+        else if(this.counter_enabled[0])
+        {
+            const rollovers = this.get_rollover_count(0, now);
 
-            if(mode === 0)
+            if(rollovers)
             {
-                this.counter_enabled[0] = 0;
+                this.counter_start_value[0] = this.get_counter_value(0, now);
+                this.counter_start_time[0] = now;
+
+                dbg_log("pit interrupt. new value: " + this.counter_start_value[0] +
+                        " rollovers: " + rollovers, LOG_PIT);
+
+                // This isn't strictly correct, but it's necessary since browsers
+                // may sleep longer than necessary to trigger the else branch below
+                // and clear the irq
+                this.cpu.device_lower_irq(0);
+                this.cpu.device_raise_irq(0);
+
+                var mode = this.counter_mode[0];
+
+                if(mode === 0)
+                {
+                    this.counter_enabled[0] = 0;
+                }
+                else if(mode === 2 || mode === 3)
+                {
+                    this.pending_irq0 += rollovers - 1;
+                }
+            }
+            else
+            {
+                this.cpu.device_lower_irq(0);
             }
         }
         else
@@ -136,7 +164,13 @@ PIT.prototype.timer = function(now, no_irq)
             this.cpu.device_lower_irq(0);
         }
 
-        if(this.counter_enabled[0])
+        if(this.pending_irq0)
+        {
+            // Give the guest a chance to service the IRQ just raised, then run
+            // the timer again immediately to replay the next missed period.
+            time_to_next_interrupt = 0;
+        }
+        else if(this.counter_enabled[0])
         {
             const diff = now - this.counter_start_time[0];
             const diff_in_ticks = Math.floor(diff * OSCILLATOR_FREQ);
@@ -177,7 +211,7 @@ PIT.prototype.get_counter_value = function(i, now)
     return value;
 };
 
-PIT.prototype.did_rollover = function(i, now)
+PIT.prototype.get_rollover_count = function(i, now)
 {
     var diff = now - this.counter_start_time[i];
 
@@ -185,12 +219,31 @@ PIT.prototype.did_rollover = function(i, now)
     {
         // should only happen after restore_state
         dbg_log("Warning: PIT timer difference is negative, resetting (timer " + i + ")");
-        return true;
+        return 1;
     }
-    var diff_in_ticks = Math.floor(diff * OSCILLATOR_FREQ);
-    //dbg_log(i + ": diff=" + diff + " start_time=" + this.counter_start_time[i] + " diff_in_ticks=" + diff_in_ticks + " (" + diff * OSCILLATOR_FREQ + ") start_value=" + this.counter_start_value[i] + " did_rollover=" + (this.counter_start_value[i] < diff_in_ticks), LOG_PIT);
 
-    return this.counter_start_value[i] < diff_in_ticks;
+    const diff_in_ticks = Math.floor(diff * OSCILLATOR_FREQ);
+    const overdue_ticks = diff_in_ticks - this.counter_start_value[i];
+
+    if(overdue_ticks <= 0)
+    {
+        return 0;
+    }
+
+    // Modes 2 and 3 are periodic. Other implemented modes should produce only
+    // one rollover even if the host callback is very late.
+    if(this.counter_mode[i] !== 2 && this.counter_mode[i] !== 3)
+    {
+        return 1;
+    }
+
+    const reload = this.counter_reload[i];
+    return Math.ceil(overdue_ticks / reload);
+};
+
+PIT.prototype.did_rollover = function(i, now)
+{
+    return this.get_rollover_count(i, now) !== 0;
 };
 
 PIT.prototype.counter_read = function(i)
@@ -258,6 +311,11 @@ PIT.prototype.counter_write = function(i, value)
 
         this.counter_start_time[i] = v86.microtick();
 
+        if(i === 0)
+        {
+            this.pending_irq0 = 0;
+        }
+
         dbg_log("counter" + i + " reload=" + h(this.counter_reload[i]) +
                 " tick=" + (this.counter_reload[i] || 0x10000) / OSCILLATOR_FREQ + "ms", LOG_PIT);
     }
@@ -324,6 +382,7 @@ PIT.prototype.port43_write = function(reg_byte)
 
     if(i === 0)
     {
+        this.pending_irq0 = 0;
         this.cpu.device_lower_irq(0);
     }
 
