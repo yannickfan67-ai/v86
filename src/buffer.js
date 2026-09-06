@@ -100,8 +100,32 @@ SyncBuffer.prototype.get_state = function()
  */
 SyncBuffer.prototype.set_state = function(state)
 {
-    this.byteLength = state[0];
-    this.buffer = state[1].slice().buffer;
+    if(state === null || state === undefined)
+    {
+        return;
+    }
+
+    if(typeof state[0] === "number")
+    {
+        this.byteLength = state[0];
+        this.buffer = state[1].slice().buffer;
+        return;
+    }
+
+    // Async buffers only store blocks that were written. When restoring such
+    // a state into a synchronous buffer, apply those blocks on top of the
+    // currently configured backing image.
+    const block_cache = state[0];
+    dbg_assert(Array.isArray(block_cache));
+    const buffer = new Uint8Array(this.buffer);
+
+    for(const [index, block] of block_cache)
+    {
+        dbg_assert(isFinite(index));
+        const offset = index * BLOCK_SIZE;
+        dbg_assert(offset + block.byteLength <= buffer.byteLength);
+        buffer.set(block, offset);
+    }
 };
 
 /**
@@ -121,6 +145,9 @@ function AsyncXHRBuffer(filename, size, fixed_chunk_size)
 
     this.block_cache = new Map();
     this.block_cache_is_write = new Set();
+
+    /** @type {Uint8Array|undefined} */
+    this.state_buffer = undefined;
 
     this.fixed_chunk_size = fixed_chunk_size;
     this.cache_reads = !!fixed_chunk_size; // TODO: could also be useful in other cases (needs testing)
@@ -149,6 +176,12 @@ AsyncXHRBuffer.prototype.load = async function()
  */
 AsyncXHRBuffer.prototype.get_from_cache = function(offset, len)
 {
+    if(this.state_buffer)
+    {
+        dbg_assert(offset + len <= this.state_buffer.byteLength);
+        return this.state_buffer.subarray(offset, offset + len);
+    }
+
     var number_of_blocks = len / BLOCK_SIZE;
     var block_index = offset / BLOCK_SIZE;
 
@@ -238,6 +271,12 @@ AsyncXHRBuffer.prototype.get = function(offset, len, fn, options)
  */
 AsyncXHRBuffer.prototype.get_and_cache = function(offset, len, fn, options)
 {
+    if(this.state_buffer)
+    {
+        this.get(offset, len, fn, options);
+        return;
+    }
+
     this.get(offset, len, function(block)
     {
         const start_block = offset / BLOCK_SIZE;
@@ -271,6 +310,13 @@ AsyncXHRBuffer.prototype.set = function(start, data, fn)
     dbg_assert(start % BLOCK_SIZE === 0);
     dbg_assert(len % BLOCK_SIZE === 0);
     dbg_assert(len);
+
+    if(this.state_buffer)
+    {
+        this.state_buffer.set(data, start);
+        fn();
+        return;
+    }
 
     var start_block = start / BLOCK_SIZE;
     var block_count = len / BLOCK_SIZE;
@@ -328,6 +374,12 @@ AsyncXHRBuffer.prototype.handle_read = function(offset, len, block)
 
 AsyncXHRBuffer.prototype.get_buffer = function(fn)
 {
+    if(this.state_buffer)
+    {
+        fn(this.state_buffer.buffer);
+        return;
+    }
+
     // We must download all parts, unlikely a good idea for big files
     fn();
 };
@@ -338,10 +390,10 @@ AsyncXHRBuffer.prototype.get_buffer = function(fn)
 //AsyncXHRBuffer.prototype.get_block_cache = function()
 //{
 //    var count = Object.keys(this.block_cache).length;
-
+//
 //    var buffer = new Uint8Array(count * BLOCK_SIZE);
 //    var indices = [];
-
+//
 //    var i = 0;
 //    for(var index of Object.keys(this.block_cache))
 //    {
@@ -355,7 +407,7 @@ AsyncXHRBuffer.prototype.get_buffer = function(fn)
 //        );
 //        i++;
 //    }
-
+//
 //    return {
 //        buffer,
 //        indices,
@@ -369,6 +421,14 @@ AsyncXHRBuffer.prototype.get_buffer = function(fn)
 AsyncXHRBuffer.prototype.get_state = function()
 {
     const state = [];
+
+    if(this.state_buffer)
+    {
+        state[0] = this.byteLength;
+        state[1] = this.state_buffer;
+        return state;
+    }
+
     const block_cache = [];
 
     for(const [index, block] of this.block_cache)
@@ -389,9 +449,27 @@ AsyncXHRBuffer.prototype.get_state = function()
  */
 AsyncXHRBuffer.prototype.set_state = function(state)
 {
-    const block_cache = state[0];
     this.block_cache.clear();
     this.block_cache_is_write.clear();
+    this.state_buffer = undefined;
+
+    if(state === null || state === undefined)
+    {
+        return;
+    }
+
+    if(typeof state[0] === "number")
+    {
+        const saved_buffer = state[1];
+        dbg_assert(saved_buffer instanceof Uint8Array);
+        dbg_assert(saved_buffer.byteLength === state[0]);
+        this.byteLength = state[0];
+        this.state_buffer = saved_buffer.slice();
+        return;
+    }
+
+    const block_cache = state[0];
+    dbg_assert(Array.isArray(block_cache));
 
     for(const [index, block] of block_cache)
     {
@@ -428,6 +506,9 @@ export function AsyncXHRPartfileBuffer(filename, size, fixed_chunk_size, partfil
 
     this.block_cache = new Map();
     this.block_cache_is_write = new Set();
+
+    /** @type {Uint8Array|undefined} */
+    this.state_buffer = undefined;
 
     this.byteLength = size;
     this.fixed_chunk_size = fixed_chunk_size;
@@ -649,6 +730,9 @@ export function AsyncFileBuffer(file)
     this.block_cache = new Map();
     this.block_cache_is_write = new Set();
 
+    /** @type {Uint8Array|undefined} */
+    this.state_buffer = undefined;
+
     this.onload = undefined;
     this.onprogress = undefined;
 }
@@ -698,12 +782,23 @@ AsyncFileBuffer.prototype.set_state = AsyncXHRBuffer.prototype.set_state;
 
 AsyncFileBuffer.prototype.get_buffer = function(fn)
 {
+    if(this.state_buffer)
+    {
+        fn(this.state_buffer.buffer);
+        return;
+    }
+
     // We must load all parts, unlikely a good idea for big files
     fn();
 };
 
 AsyncFileBuffer.prototype.get_as_file = function(name)
 {
+    if(this.state_buffer)
+    {
+        return new File([this.state_buffer], name);
+    }
+
     var parts = [];
     var existing_blocks = Array.from(this.block_cache.keys()).sort(function(x, y) { return x - y; });
 
