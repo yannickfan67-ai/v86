@@ -34,6 +34,7 @@ jobs:
           node tests/api/state-map.js
           node tests/api/state-header.js
           node tests/api/log.js
+          node tests/api/network.js
 
   test:
     runs-on: ubuntu-latest
