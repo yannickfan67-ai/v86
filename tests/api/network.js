@@ -58,6 +58,14 @@ try
     sockets[1].readyState = 1;
     sockets[1].onopen({});
     assert.equal(adapter.send_queue.length, 0);
+
+    // A reconnect callback may already be queued when the adapter is
+    // destroyed. connect() must stay inert afterwards instead of creating a
+    // fresh socket when that callback eventually fires.
+    adapter.destroy();
+    adapter.last_connect_attempt = Date.now() - adapter.reconnect_interval;
+    adapter.connect();
+    assert.equal(sockets.length, 2);
 }
 finally
 {
