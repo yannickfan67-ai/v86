@@ -81,7 +81,7 @@ NetworkAdapter.prototype.destroy = function()
 
 NetworkAdapter.prototype.connect = function()
 {
-    if(typeof WebSocket === "undefined")
+    if(this.destroyed || typeof WebSocket === "undefined")
     {
         return;
     }
