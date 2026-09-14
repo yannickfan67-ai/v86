@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p images
           curl --fail --location --compressed --output-dir images --remote-name-all \
-            https://i.copy.sh/{linux.iso,linux3.iso,linux4.iso,buildroot-bzimage68.bin}
+            https://i.copy.sh/{linux.iso,linux3.iso,linux4.iso,TinyCore-11.0.iso,buildroot-bzimage68.bin}
 
       - name: Build integration-test prerequisites
         run: make build/v86-debug.wasm build/integration-test-fs/fs.json
@@ -45,3 +45,9 @@ jobs:
 
       - name: Smoke boot linux4.iso
         run: TEST_NAME="Linux 4" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot Tiny Core 11 as CD-ROM
+        run: TEST_NAME="Tiny Core 11 CD" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot Tiny Core 11 as hard disk
+        run: TEST_NAME="Tiny Core 11 HD" LOG_LEVEL=3 ./tests/full/run.js
