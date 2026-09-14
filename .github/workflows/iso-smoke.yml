@@ -1,4 +1,4 @@
-name: ISO smoke diagnostics
+name: Boot smoke diagnostics
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - diagnostics/iso-smoke-20260914
 
 jobs:
-  iso-smoke:
+  boot-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p images
           curl --fail --location --compressed --output-dir images --remote-name-all \
-            https://i.copy.sh/{linux.iso,linux3.iso,linux4.iso,TinyCore-11.0.iso,buildroot-bzimage68.bin}
+            https://i.copy.sh/{linux.iso,linux3.iso,linux4.iso,TinyCore-11.0.iso,buildroot-bzimage68.bin,freedos722.img,windows101.img,kolibri.img,msdos.img,openbsd-floppy.img,mobius-fd-release5.img,os8.img}
 
       - name: Build integration-test prerequisites
         run: make build/v86-debug.wasm build/integration-test-fs/fs.json
@@ -51,3 +51,24 @@ jobs:
 
       - name: Smoke boot Tiny Core 11 as hard disk
         run: TEST_NAME="Tiny Core 11 HD" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot FreeDOS
+        run: TEST_NAME="FreeDOS boot" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot Windows 1.01
+        run: TEST_NAME="Windows 1.01 boot" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot Sol OS
+        run: TEST_NAME="Sol OS" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot KolibriOS
+        run: TEST_NAME="KolibriOS" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot MS-DOS
+        run: TEST_NAME="MS-DOS" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot OpenBSD floppy
+        run: TEST_NAME="OpenBSD Floppy" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot Mobius
+        run: TEST_NAME="Mobius" LOG_LEVEL=3 ./tests/full/run.js
