@@ -55,6 +55,9 @@ jobs:
       - name: Smoke boot FreeDOS
         run: TEST_NAME="FreeDOS boot" LOG_LEVEL=3 ./tests/full/run.js
 
+      - name: Smoke boot FreeDOS with Bochs BIOS
+        run: TEST_NAME="FreeDOS boot with Bochs BIOS" LOG_LEVEL=3 ./tests/full/run.js
+
       - name: Smoke boot Windows 1.01
         run: TEST_NAME="Windows 1.01 boot" LOG_LEVEL=3 ./tests/full/run.js
 
@@ -67,8 +70,20 @@ jobs:
       - name: Smoke boot MS-DOS
         run: TEST_NAME="MS-DOS" LOG_LEVEL=3 ./tests/full/run.js
 
+      - name: Smoke boot MS-DOS with floppy
+        run: TEST_NAME="MS-DOS (hard disk + floppy disk)" LOG_LEVEL=3 ./tests/full/run.js
+
       - name: Smoke boot OpenBSD floppy
         run: TEST_NAME="OpenBSD Floppy" LOG_LEVEL=3 ./tests/full/run.js
 
       - name: Smoke boot Mobius
         run: TEST_NAME="Mobius" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot Linux with Bochs BIOS
+        run: TEST_NAME="Linux with Bochs BIOS" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot direct bzImage
+        run: TEST_NAME="Linux bzImage" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot bzImage from filesystem
+        run: TEST_NAME="Linux with bzImage from filesystem" LOG_LEVEL=3 ./tests/full/run.js
