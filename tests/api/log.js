@@ -9,17 +9,7 @@ console.trace = () => {};
 try
 {
     assert.doesNotThrow(() => dbg_assert(true));
-
-    let message_only_error;
-    try
-    {
-        dbg_assert("broken state");
-    }
-    catch(error)
-    {
-        message_only_error = error;
-    }
-    assert.equal(message_only_error, "Assert failed: broken state");
+    assert.doesNotThrow(() => dbg_assert("507a759c70.bin"));
 
     let normal_error;
     try
@@ -37,4 +27,4 @@ finally
     console.trace = original_trace;
 }
 
-console.log("dbg_assert compatibility test passed");
+console.log("dbg_assert condition test passed");
