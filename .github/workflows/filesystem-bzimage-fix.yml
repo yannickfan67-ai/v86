@@ -24,21 +24,23 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import os
           p = Path("src/browser/starter.js")
           s = p.read_text()
-          old = '''                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd.buffer));
-                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage.buffer));'''
-          new = '''                    const initrd_buffer = initrd.buffer.slice(initrd.byteOffset, initrd.byteOffset + initrd.byteLength);
-                    const bzimage_buffer = bzimage.buffer.slice(bzimage.byteOffset, bzimage.byteOffset + bzimage.byteLength);
-                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd_buffer));
-                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage_buffer));'''
-          if old in s:
-              p.write_text(s.replace(old, new, 1))
-              print("changed=true", file=open(__import__('os').environ['GITHUB_OUTPUT'], 'a'))
-          elif new in s:
-              print("changed=false", file=open(__import__('os').environ['GITHUB_OUTPUT'], 'a'))
+          old_initrd = 'put_on_settings.call(this, "initrd", new SyncBuffer(initrd.buffer));'
+          old_bzimage = 'put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage.buffer));'
+          new_initrd = 'put_on_settings.call(this, "initrd", new SyncBuffer(initrd.buffer.slice(initrd.byteOffset, initrd.byteOffset + initrd.byteLength)));'
+          new_bzimage = 'put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage.buffer.slice(bzimage.byteOffset, bzimage.byteOffset + bzimage.byteLength)));'
+          if old_initrd in s and old_bzimage in s:
+              s = s.replace(old_initrd, new_initrd, 1).replace(old_bzimage, new_bzimage, 1)
+              p.write_text(s)
+              changed = 'true'
+          elif new_initrd in s and new_bzimage in s:
+              changed = 'false'
           else:
-              raise SystemExit("expected starter.js sequence not found")
+              raise SystemExit("expected starter.js statements not found")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              print(f"changed={changed}", file=out)
 
       - name: Commit source fix
         if: steps.patch.outputs.changed == 'true'
