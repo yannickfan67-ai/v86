@@ -1,0 +1,47 @@
+name: ISO smoke diagnostics
+
+on:
+  push:
+    branches:
+      - diagnostics/iso-smoke-20260914
+
+jobs:
+  iso-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.17.0'
+
+      - name: Setup Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add wasm32-unknown-unknown
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y nasm
+
+      - name: Download diagnostic images
+        run: |
+          mkdir -p images
+          curl --fail --location --compressed --output-dir images --remote-name-all \
+            https://i.copy.sh/{linux.iso,linux3.iso,linux4.iso,buildroot-bzimage68.bin}
+
+      - name: Build integration-test prerequisites
+        run: make build/v86-debug.wasm build/integration-test-fs/fs.json
+
+      - name: Smoke boot linux.iso
+        run: TEST_NAME="Linux" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot linux3.iso
+        run: TEST_NAME="Linux 3 reboot" LOG_LEVEL=3 ./tests/full/run.js
+
+      - name: Smoke boot linux4.iso
+        run: TEST_NAME="Linux 4" LOG_LEVEL=3 ./tests/full/run.js
