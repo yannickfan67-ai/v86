@@ -614,8 +614,8 @@ V86.prototype.continue_init = async function(emulator, options)
                         settings.fs9p.read_file(initrd_path),
                         settings.fs9p.read_file(bzimage_path),
                     ]);
-                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd.buffer));
-                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage.buffer));
+                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd.buffer.slice(initrd.byteOffset, initrd.byteOffset + initrd.byteLength)));
+                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage.buffer.slice(bzimage.byteOffset, bzimage.byteOffset + bzimage.byteLength)));
                 }
             }
             else
