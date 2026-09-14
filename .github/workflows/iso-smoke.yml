@@ -85,5 +85,21 @@ jobs:
       - name: Smoke boot direct bzImage
         run: TEST_NAME="Linux bzImage" LOG_LEVEL=3 ./tests/full/run.js
 
-      - name: Smoke boot bzImage from filesystem
+      - name: Apply candidate filesystem image bounds fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/browser/starter.js')
+          s = p.read_text()
+          old = '''                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd.buffer));
+                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage.buffer));'''
+          new = '''                    const initrd_buffer = initrd.buffer.slice(initrd.byteOffset, initrd.byteOffset + initrd.byteLength);
+                    const bzimage_buffer = bzimage.buffer.slice(bzimage.byteOffset, bzimage.byteOffset + bzimage.byteLength);
+                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd_buffer));
+                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage_buffer));'''
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Smoke boot bzImage from filesystem with bounds fix
         run: TEST_NAME="Linux with bzImage from filesystem" LOG_LEVEL=3 ./tests/full/run.js
