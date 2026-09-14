@@ -1,0 +1,77 @@
+name: Validate filesystem kernel buffer bounds
+
+on:
+  push:
+    branches:
+      - fix/filesystem-kernel-buffer-bounds
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: fix/filesystem-kernel-buffer-bounds
+          fetch-depth: 0
+
+      - name: Apply source fix if needed
+        id: patch
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("src/browser/starter.js")
+          s = p.read_text()
+          old = '''                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd.buffer));
+                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage.buffer));'''
+          new = '''                    const initrd_buffer = initrd.buffer.slice(initrd.byteOffset, initrd.byteOffset + initrd.byteLength);
+                    const bzimage_buffer = bzimage.buffer.slice(bzimage.byteOffset, bzimage.byteOffset + bzimage.byteLength);
+                    put_on_settings.call(this, "initrd", new SyncBuffer(initrd_buffer));
+                    put_on_settings.call(this, "bzimage", new SyncBuffer(bzimage_buffer));'''
+          if old in s:
+              p.write_text(s.replace(old, new, 1))
+              print("changed=true", file=open(__import__('os').environ['GITHUB_OUTPUT'], 'a'))
+          elif new in s:
+              print("changed=false", file=open(__import__('os').environ['GITHUB_OUTPUT'], 'a'))
+          else:
+              raise SystemExit("expected starter.js sequence not found")
+
+      - name: Commit source fix
+        if: steps.patch.outputs.changed == 'true'
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/browser/starter.js
+          git commit -m "fix: preserve filesystem kernel buffer bounds"
+          git push origin HEAD:fix/filesystem-kernel-buffer-bounds
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.17.0'
+
+      - name: Setup Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add wasm32-unknown-unknown
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y nasm
+
+      - name: Download test image
+        run: |
+          mkdir -p images
+          curl --fail --location --compressed --output-dir images --remote-name-all \
+            https://i.copy.sh/{buildroot-bzimage68.bin}
+
+      - name: Build integration prerequisites
+        run: make build/v86-debug.wasm build/integration-test-fs/fs.json
+
+      - name: Test bzImage from filesystem
+        run: TEST_NAME="Linux with bzImage from filesystem" LOG_LEVEL=3 ./tests/full/run.js
