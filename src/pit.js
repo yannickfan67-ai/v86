@@ -131,8 +131,11 @@ PIT.prototype.timer = function(now, no_irq)
 
             if(rollovers)
             {
+                const diff = now - this.counter_start_time[0];
+                const diff_in_ticks = Math.floor(diff * OSCILLATOR_FREQ);
+
                 this.counter_start_value[0] = this.get_counter_value(0, now);
-                this.counter_start_time[0] = now;
+                this.counter_start_time[0] = diff < 0 ? now : this.counter_start_time[0] + diff_in_ticks / OSCILLATOR_FREQ;
 
                 dbg_log("pit interrupt. new value: " + this.counter_start_value[0] +
                         " rollovers: " + rollovers, LOG_PIT);
